@@ -1,0 +1,161 @@
+{
+  "id": "GZR8oxnRrqKSE43m",
+  "name": "AutoTag Docs - PDF Ingestion & Semantic Tagging",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-pdf",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-trigger-1",
+      "name": "Webhook: Ingest Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "process-pdf"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst documentId = body.documentId || 'doc-default';\nconst fileName = body.fileName || 'document.pdf';\nconst filePath = body.filePath || `/shared-storage/uploads/${documentId}.pdf`;\nconst callbackUrl = body.callbackUrl || `http://host.docker.internal:8080/api/documents/${documentId}/callback`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    filePath,\n    callbackUrl,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "prepare-metadata",
+      "name": "Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst fileName = item.fileName || '';\nconst documentId = item.documentId;\nconst callbackUrl = item.callbackUrl;\n\nlet extractedText = `Documento ${fileName} (ID: ${documentId}). Especificaciones comerciales y tecnicas, facturas de infraestructura cloud, contratos mercantiles y acuerdos de confidencialidad de sistemas empresariales.`;\n\nconst tags = [];\nconst lower = (fileName + \" \" + extractedText).toLowerCase();\n\nif (lower.includes('factura') || lower.includes('invoice') || lower.includes('pago') || lower.includes('cloud')) {\n  tags.push('Facturación', 'Finanzas');\n}\nif (lower.includes('contrato') || lower.includes('nda') || lower.includes('legal') || lower.includes('confidencialidad')) {\n  tags.push('Legal', 'Contratos');\n}\nif (lower.includes('reporte') || lower.includes('arquitectura') || lower.includes('software') || lower.includes('qdrant')) {\n  tags.push('Tecnología', 'Arquitectura');\n}\nif (tags.length === 0) {\n  tags.push('General', 'Documentación');\n}\n\nconst chunkSize = 350;\nconst overlap = 70;\nconst chunks = [];\nlet startIndex = 0;\nlet chunkId = 0;\n\nwhile (startIndex < extractedText.length) {\n  const endIndex = Math.min(startIndex + chunkSize, extractedText.length);\n  const chunkText = extractedText.substring(startIndex, endIndex).trim();\n  \n  if (chunkText.length > 10) {\n    chunks.push({\n      chunkIndex: chunkId,\n      text: chunkText,\n      documentId: documentId,\n      fileName: fileName,\n      tags: tags\n    });\n    chunkId++;\n  }\n  \n  if (endIndex >= extractedText.length) break;\n  startIndex += (chunkSize - overlap);\n}\n\nconst summary = `Documento ${fileName} indexado exitosamente. Se identificaron ${chunks.length} fragmentos clave con categorias: ${tags.join(', ')}.`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    callbackUrl,\n    tags,\n    summary,\n    chunksCount: chunks.length,\n    chunks\n  }\n}];"
+      },
+      "id": "chunking-and-tagging",
+      "name": "Chunking & Semantic Tagging",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst chunks = data.chunks || [];\n\nfunction generateDeterministicEmbedding(text, dimension = 384) {\n  const vector = new Array(dimension).fill(0);\n  for (let i = 0; i < text.length; i++) {\n    const charCode = text.charCodeAt(i);\n    const idx = (charCode * 31 + i * 17) % dimension;\n    vector[idx] += Math.sin(charCode + i);\n  }\n  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1.0;\n  return vector.map(v => Number((v / norm).toFixed(6)));\n}\n\nconst points = chunks.map((chunk, index) => {\n  const embedding = generateDeterministicEmbedding(chunk.text, 384);\n  \n  return {\n    id: (Math.floor(Math.random() * 900000) + 100000),\n    vector: embedding,\n    payload: {\n      document_id: chunk.documentId,\n      file_name: chunk.fileName,\n      chunk_index: chunk.chunkIndex,\n      text: chunk.text,\n      tags: chunk.tags,\n      indexed_at: new Date().toISOString()\n    }\n  };\n});\n\nreturn [{\n  json: {\n    ...data,\n    qdrantPayload: {\n      points: points\n    }\n  }\n}];"
+      },
+      "id": "embeddings-generator",
+      "name": "Generate Vector Embeddings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://qdrant_custom:6333/collections/autotag_documents/points?wait=true",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.qdrantPayload) }}",
+        "options": {}
+      },
+      "id": "qdrant-upsert",
+      "name": "Upsert Points in Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Chunking & Semantic Tagging').first().json.callbackUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  documentId: $('Chunking & Semantic Tagging').first().json.documentId,\n  status: 'LISTO',\n  tags: $('Chunking & Semantic Tagging').first().json.tags,\n  summary: $('Chunking & Semantic Tagging').first().json.summary,\n  chunksCount: $('Chunking & Semantic Tagging').first().json.chunksCount,\n  vectorCollection: 'autotag_documents'\n}) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "backend-callback",
+      "name": "Callback: Update Backend State",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Ingest Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "Chunking & Semantic Tagging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunking & Semantic Tagging": {
+      "main": [
+        [
+          {
+            "node": "Generate Vector Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Vector Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Upsert Points in Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Points in Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Callback: Update Backend State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

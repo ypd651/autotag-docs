@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoTag Docs — Smart PDF Scanner & Semantic Tagging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h2>AutoTag Docs</h2>
+                    <span class="badge-sub">Spring 25 • n8n • Qdrant</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span>Panel de Archivos</span>
+                </button>
+                <button class="nav-btn" data-tab="search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span>Búsqueda Semántica</span>
+                </button>
+                <button class="nav-btn" data-tab="triggers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Monitor de Triggers</span>
+                </button>
+            </nav>
+
+            <!-- Diagnostics Health Box -->
+            <div class="health-card">
+                <div class="health-header">
+                    <h4>Diagnóstico del Stack</h4>
+                    <span class="pulse-indicator"></span>
+                </div>
+                <div class="health-item">
+                    <span class="dot" id="dot-postgres"></span>
+                    <span>PostgreSQL (app_db)</span>
+                </div>
+                <div class="health-item">
+                    <span class="dot" id="dot-qdrant"></span>
+                    <span>Qdrant (Vector DB)</span>
+                </div>
+                <div class="health-item">
+                    <span class="dot" id="dot-n8n"></span>
+                    <span>n8n (Orquestador AI)</span>
+                </div>
+                <div class="health-item">
+                    <span class="dot" id="dot-backend"></span>
+                    <span>Spring Boot (API REST)</span>
+                </div>
+                <button class="btn-health-refresh" id="btn-refresh-health">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    <span>Comprobar Estado</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="title-group">
+                    <h1 id="page-title">Gestión de Documentos & Ingesta</h1>
+                    <p id="page-subtitle">Extracción RAG, chunking y etiquetado vectorial en tiempo real</p>
+                </div>
+
+                <div class="topbar-actions">
+                    <!-- Light / Dark Mode Toggle -->
+                    <button class="theme-toggle" id="theme-toggle" title="Cambiar tema claro/oscuro">
+                        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
+
+                    <button class="btn btn-secondary" id="btn-refresh-list">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                        <span>Actualizar</span>
+                    </button>
+
+                    <button class="btn btn-primary" id="btn-quick-upload">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Cargar PDF</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB 1: DASHBOARD & UPLOAD -->
+            <section class="tab-view active" id="view-dashboard">
+                <!-- Upload Dropzone Card -->
+                <div class="upload-container" id="dropzone">
+                    <input type="file" id="file-input" accept="application/pdf" hidden>
+                    <div class="dropzone-body">
+                        <div class="upload-icon-anim">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <h3>Arrastra aquí tus archivos PDF</h3>
+                        <p>Facturas comerciales, contratos legales, reportes técnicos o acuerdos de confidencialidad.</p>
+                        
+                        <div class="upload-buttons-group">
+                            <button class="btn btn-primary" type="button" id="btn-browse-file">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                <span>Explorar Archivos</span>
+                            </button>
+                            <span class="upload-hint">PDF hasta 50 MB • Extracción RAG automática</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Animation -->
+                    <div class="upload-progress-box" id="upload-progress" style="display: none;">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-glow" id="progress-bar-fill"></div>
+                        </div>
+                        <div class="progress-status-row">
+                            <span id="progress-status-text">Subiendo archivo y despachando trigger hacia n8n...</span>
+                            <span id="progress-percentage">45%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Counters -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon metric-blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                        </div>
+                        <div>
+                            <span class="metric-label">Total Documentos</span>
+                            <div class="metric-value" id="stat-total">0</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon metric-amber">
+                            <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"></circle></svg>
+                        </div>
+                        <div>
+                            <span class="metric-label">En Proceso n8n</span>
+                            <div class="metric-value" id="stat-processing">0</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon metric-emerald">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <span class="metric-label">Vectorizados (Qdrant)</span>
+                            <div class="metric-value" id="stat-ready">0</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon metric-purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                        </div>
+                        <div>
+                            <span class="metric-label">Etiquetas Contextuales</span>
+                            <div class="metric-value" id="stat-tags">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Tag Filter Chips -->
+                <div class="tag-filter-bar">
+                    <span class="filter-label">Filtrar por etiqueta:</span>
+                    <div class="tag-chip-row" id="tag-filter-chips">
+                        <button class="chip active" data-tag="">Todas</button>
+                    </div>
+                </div>
+
+                <!-- Document Table Card -->
+                <div class="content-card">
+                    <div class="card-top">
+                        <h3>Catálogo de Archivos en PostgreSQL</h3>
+                        <div class="card-top-controls">
+                            <select id="filter-status" class="custom-select">
+                                <option value="">Todos los estados</option>
+                                <option value="LISTO">Listos</option>
+                                <option value="PROCESANDO">Procesando</option>
+                                <option value="FALLIDO">Fallidos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Estado</th>
+                                    <th>Etiquetas Inteligentes</th>
+                                    <th>Resumen RAG / Chunks</th>
+                                    <th>Fecha</th>
+                                    <th class="text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documents-tbody">
+                                <tr>
+                                    <td colspan="6" class="text-center py-8 text-muted">Cargando documentos desde app_db...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SEMANTIC SEARCH -->
+            <section class="tab-view" id="view-search">
+                <div class="content-card search-hero">
+                    <h2>Búsqueda Semántica Vectorial con Qdrant</h2>
+                    <p class="hero-desc">Busca por concepto, cláusula o intención. Los embeddings de 384 dimensiones comparan la distancia coseno con los fragmentos indexados en Qdrant.</p>
+
+                    <div class="search-bar-wrap">
+                        <div class="search-input-box">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="input-semantic-search" placeholder="Ej: 'Facturas de mayo con pagos pendientes', 'Cláusulas de confidencialidad'...">
+                        </div>
+                        <button class="btn btn-primary" id="btn-do-search">
+                            <span>Buscar con IA</span>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <div class="suggestion-pills">
+                        <span>Sugerencias rápidas:</span>
+                        <button class="pill" data-query="Facturas de servicios cloud y pagos">Facturas Cloud</button>
+                        <button class="pill" data-query="Cláusulas de confidencialidad y secretos comerciales">Contratos NDA</button>
+                        <button class="pill" data-query="Arquitectura de software Spring Boot y Docker">Arquitectura Técnica</button>
+                    </div>
+                </div>
+
+                <!-- Search Results Output -->
+                <div class="search-results-wrapper" id="search-results-list">
+                    <div class="search-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <p>Escribe tu consulta arriba para buscar dentro del espacio vectorial de Qdrant.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: TRIGGERS & MONITOR -->
+            <section class="tab-view" id="view-triggers">
+                <div class="content-card">
+                    <div class="card-top">
+                        <div>
+                            <h3>Arquitectura de Triggers & Webhooks</h3>
+                            <p class="text-muted">Ciclo de vida del evento de ingesta asíncrona entre Spring Boot, n8n y Qdrant.</p>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-simulate-event">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            <span>Trigger de Diagnóstico</span>
+                        </button>
+                    </div>
+
+                    <!-- Visual Flow Timeline -->
+                    <div class="flow-timeline">
+                        <div class="timeline-node">
+                            <span class="step-num">01</span>
+                            <h4>Upload Multipart</h4>
+                            <p>Spring Boot guarda el PDF y registra en <code>app_db</code> como <b>PROCESANDO</b>.</p>
+                        </div>
+                        <div class="timeline-connector">➔</div>
+                        <div class="timeline-node active-node">
+                            <span class="step-num">02</span>
+                            <h4>Webhook Trigger</h4>
+                            <p>Spring Boot despacha <code>POST /webhook/process-pdf</code> hacia n8n.</p>
+                        </div>
+                        <div class="timeline-connector">➔</div>
+                        <div class="timeline-node">
+                            <span class="step-num">03</span>
+                            <h4>RAG & Vectorización</h4>
+                            <p>n8n fragmenta el texto (chunks) e inserta vectores en Qdrant (Cosine).</p>
+                        </div>
+                        <div class="timeline-connector">➔</div>
+                        <div class="timeline-node active-node">
+                            <span class="step-num">04</span>
+                            <h4>Callback Trigger</h4>
+                            <p>n8n avisa a Spring Boot. Estado pasa a <b>LISTO</b> y guarda las etiquetas.</p>
+                        </div>
+                    </div>
+
+                    <!-- Realtime Event Terminal -->
+                    <div class="terminal-card">
+                        <div class="terminal-bar">
+                            <span class="terminal-circle red"></span>
+                            <span class="terminal-circle yellow"></span>
+                            <span class="terminal-circle green"></span>
+                            <span class="terminal-title">Consola de Eventos en Tiempo Real</span>
+                        </div>
+                        <div class="terminal-logs" id="terminal-screen">
+                            <div class="log-line"><span class="log-time">[00:00:00]</span> <span class="log-info">Sistema AutoTag Docs inicializado. Conexiones listas.</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Detalle del Documento -->
+    <div id="doc-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="doc-icon modal-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-doc-title">Detalle del Documento</h3>
+                        <span id="modal-doc-meta" class="doc-id-sub">UUID: —</span>
+                    </div>
+                </div>
+                <button class="btn-close-modal" id="modal-btn-close">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Status & Stats Row -->
+                <div class="modal-stats-row">
+                    <div class="modal-stat-box">
+                        <span class="m-label">Estado</span>
+                        <div id="modal-doc-status">—</div>
+                    </div>
+                    <div class="modal-stat-box">
+                        <span class="m-label">Colección Qdrant</span>
+                        <div id="modal-doc-collection" class="font-mono">autotag_documents</div>
+                    </div>
+                    <div class="modal-stat-box">
+                        <span class="m-label">Dimensión de Vectores</span>
+                        <div class="font-mono">384 (Cosine)</div>
+                    </div>
+                    <div class="modal-stat-box">
+                        <span class="m-label">Chunks Indexados</span>
+                        <div id="modal-doc-chunks-count" class="font-mono">1</div>
+                    </div>
+                </div>
+
+                <!-- Tags Section -->
+                <div class="modal-section">
+                    <h4>Etiquetas Semánticas Identificadas</h4>
+                    <div id="modal-doc-tags" class="tag-badge-group"></div>
+                </div>
+
+                <!-- Summary Section -->
+                <div class="modal-section">
+                    <h4>Resumen Contextual RAG</h4>
+                    <div id="modal-doc-summary" class="modal-summary-box"></div>
+                </div>
+
+                <!-- Chunks & Vector Preview -->
+                <div class="modal-section">
+                    <h4>Fragmento Vectorial Almacenado en Qdrant</h4>
+                    <div id="modal-doc-chunks" class="modal-chunks-box"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-btn-search">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span>Buscar este texto en Qdrant</span>
+                </button>
+                <button class="btn btn-primary" id="modal-btn-reprocess">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    <span>Re-disparar Trigger n8n</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-wrapper" class="toast-wrapper"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
