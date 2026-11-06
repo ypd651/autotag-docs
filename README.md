@@ -63,9 +63,27 @@ El proyecto se estructuró dividiendo responsabilidades en dos roles de ingenier
 ## ⚡ Ciclo de Vida de los Triggers (Event-Driven)
 
 1. **Trigger 01 (Upload Multipart):** El usuario sube un PDF desde la interfaz o CLI. Spring Boot almacena el archivo en `./shared-storage/uploads/` y registra el documento en PostgreSQL en estado **`PROCESANDO`**.
-2. **Trigger 02 (Webhook Asíncrono a n8n):** Spring Boot despacha un evento `POST http://localhost:5678/webhook/process-pdf`. n8n responde inmediatamente con `HTTP 200 (onReceived)` liberando los recursos del servidor en menos de 20 ms.
+2. **Trigger 02 (Webhook Asíncrono a n8n):** Spring Boot despacha un evento `POST http://localhost:5679/webhook/process-pdf`. n8n responde inmediatamente con `HTTP 200 (onReceived)` liberando los recursos del servidor en menos de 20 ms.
 3. **Trigger 03 (Extracción, Chunking & Inserción en Qdrant):** n8n procesa el archivo en segundo plano, clasifica las etiquetas contextuales (*Facturación, Finanzas, Legal, Contratos, Tecnología, Arquitectura*), genera los embeddings de 384 dimensiones e inserta los puntos vectoriales en Qdrant.
-4. **Trigger 04 (Callback a Spring Boot):** n8n invoca el webhook de retorno `POST http://host.docker.internal:8080/api/documents/{id}/callback`. Spring Boot actualiza el estado a **`LISTO`** y asocia las etiquetas relacionales en PostgreSQL.
+4. **Trigger 04 (Callback a Spring Boot):** n8n invoca el webhook de retorno `POST http://host.docker.internal:8081/api/documents/{id}/callback`. Spring Boot actualiza el estado a **`LISTO`** y asocia las etiquetas relacionales en PostgreSQL.
+
+---
+
+## 🛠️ Correcciones y Mejoras Aplicadas (Compatibilidad Linux & Windows)
+
+El proyecto cuenta con soporte y optimizaciones nativas tanto para **Linux** como para **Windows**:
+
+1. **Migración al Puerto 8081 (Evita conflicto con Apache Tomcat / IIS):**
+   * El puerto estándar `8080` suele estar ocupado por servicios del sistema (como Apache Tomcat en Linux/Ubuntu o IIS en Windows). Se configuró el backend y frontend en el puerto **`8081`** para garantizar disponibilidad inmediata.
+2. **Sincronización Total de Puertos Docker & Backend:**
+   * Se alineó la configuración de [application.yml](file:///home/camper/Taller-All/autotag-docs/backend/src/main/resources/application.yml) con los mapeos expuestos en [docker-compose.yml](file:///home/camper/Taller-All/autotag-docs/docker-compose.yml):
+     * **PostgreSQL:** Puerto host `5433` (`5433:5432`)
+     * **Qdrant:** Puerto host `6334` (`6334:6333`)
+     * **n8n:** Puerto host `5679` (`5679:5678`)
+3. **Soporte Oficial Multiplataforma de Gradle:**
+   * Se incluyó el script ejecutable para Linux/macOS [`./gradlew`](file:///home/camper/Taller-All/autotag-docs/backend/gradlew) junto al script de Windows [`gradlew.bat`](file:///home/camper/Taller-All/autotag-docs/backend/gradlew.bat) y la distribución portable `gradle/wrapper/`. Ya no depende de rutas fijas de usuario ni de tener Gradle previamente instalado en el sistema operativo.
+4. **Activación del Pipeline en n8n:**
+   * El flujo `autotag-pipeline.json` queda registrado y publicado dentro del contenedor `n8n_custom`, registrando el endpoint `/webhook/process-pdf` y el callback hacia `http://host.docker.internal:8081`, asegurando que los archivos subidos pasen de `PROCESANDO` a `LISTO` automáticamente.
 
 ---
 
@@ -73,14 +91,14 @@ El proyecto se estructuró dividiendo responsabilidades en dos roles de ingenier
 
 | Servicio | Entorno / Contenedor | Host / URL Local | Puerto | Credenciales / Detalles |
 | :--- | :--- | :--- | :---: | :--- |
-| **Front-End SPA** | Host / Spring Static | [http://localhost:8080](http://localhost:8080) | `8080` | Servido directamente por Spring Boot |
-| **Backend REST API** | Host (Spring Boot 25) | [http://localhost:8080/api](http://localhost:8080/api) | `8080` | Spring Boot 3.4.0, Gradle 9.7.1 |
-| **Orquestador n8n** | Docker (`autotag_n8n`) | [http://localhost:5678](http://localhost:5678) | `5678` | UI del editor de flujos y Webhooks |
-| **Qdrant REST API** | Docker (`qdrant_custom`)| [http://localhost:6333](http://localhost:6333) | `6333` | REST API para búsqueda vectorial |
-| **Qdrant Dashboard** | Docker (`qdrant_custom`)| [http://localhost:6333/dashboard](http://localhost:6333/dashboard) | `6333` | Panel visual de colecciones y puntos |
-| **Qdrant gRPC** | Docker (`qdrant_custom`)| `localhost:6334` | `6334` | Protocolo binario de alta velocidad |
-| **PostgreSQL** | Docker (`postgres_custom`)| `localhost:5432` | `5432` | BD: `app_db` \| User: `postgres` \| Pass: `postgres` |
-| **Docker Host Bridge** | Red interna Docker | `http://host.docker.internal:8080` | `8080` | Usado por n8n para enviar callbacks a Spring Boot |
+| **Front-End SPA** | Host / Spring Static | [http://localhost:8081](http://localhost:8081) | `8081` | Servido directamente por Spring Boot |
+| **Backend REST API** | Host (Spring Boot 25) | [http://localhost:8081/api](http://localhost:8081/api) | `8081` | Spring Boot 3.4.0, Gradle 9.7.1 |
+| **Orquestador n8n** | Docker (`n8n_custom`) | [http://localhost:5679](http://localhost:5679) | `5679` | UI del editor de flujos y Webhooks |
+| **Qdrant REST API** | Docker (`qdrant_custom`)| [http://localhost:6334](http://localhost:6334) | `6334` | REST API para búsqueda vectorial |
+| **Qdrant Dashboard** | Docker (`qdrant_custom`)| [http://localhost:6334/dashboard](http://localhost:6334/dashboard) | `6334` | Panel visual de colecciones y puntos |
+| **Qdrant gRPC** | Docker (`qdrant_custom`)| `localhost:6335` | `6335` | Protocolo binario de alta velocidad |
+| **PostgreSQL** | Docker (`postgres_custom`)| `localhost:5433` | `5433` | BD: `app_db` \| User: `postgres` \| Pass: `postgres` |
+| **Docker Host Bridge** | Red interna Docker | `http://host.docker.internal:8081` | `8081` | Usado por n8n para enviar callbacks a Spring Boot |
 
 ---
 
@@ -88,61 +106,88 @@ El proyecto se estructuró dividiendo responsabilidades en dos roles de ingenier
 
 ### Prerrequisitos
 * **Java Development Kit (JDK 21 o superior, compatible con JDK 25)**
-* **Docker Desktop** (con soporte para Linux Containers)
-* **PowerShell 5.1+** (en Windows) o terminal Bash
+* **Docker Desktop / Docker Engine** (con soporte para Linux Containers)
 
 ---
 
-### Paso 1: Clonar y Ubicarse en el Directorio
-```powershell
-cd C:\Users\USER26\compose-qdrant
-```
+### Paso 1: Ubicarse en la Raíz del Proyecto
+
+* **En Linux:**
+  ```bash
+  cd autotag-docs
+  ```
+* **En Windows (PowerShell):**
+  ```powershell
+  cd autotag-docs
+  ```
 
 ---
 
-### Paso 2: Levantar los Contenedores de Infraestructura (PostgreSQL, Qdrant y n8n)
-Desde la raíz del proyecto, ejecuta:
-```powershell
-docker-compose up -d
+### Paso 2: Levantar los Contenedores Docker (PostgreSQL, Qdrant y n8n)
+
+```bash
+docker compose up -d
 ```
-Verifica que los tres contenedores estén corriendo:
-```powershell
+Verifica que los tres contenedores estén saludables y activos:
+```bash
 docker ps
 ```
-Deberás ver activos: `postgres_custom`, `qdrant_custom` y `autotag_n8n`.
+Deberás ver: `postgres_custom`, `qdrant_custom` y `n8n_custom`.
 
 ---
 
-### Paso 3: Compilar y Ejecutar el Backend (Spring Boot con Gradle)
-Ingresa a la carpeta `backend` y ejecuta el script de Gradle:
+### Paso 3: Cargar y Publicar el Flujo en n8n
 
-```powershell
-cd C:\Users\USER26\compose-qdrant\backend
-.\gradlew.bat bootRun
-```
-*El backend iniciará en el puerto **`8080`** y ejecutará automáticamente las migraciones JPA sobre PostgreSQL.*
+Ejecuta estos comandos para importar y activar el pipeline:
+
+* **En Linux (Bash):**
+  ```bash
+  docker cp autotag-pipeline.json n8n_custom:/tmp/autotag-pipeline.json
+  docker exec n8n_custom n8n import:workflow --input=/tmp/autotag-pipeline.json
+  docker exec n8n_custom n8n publish:workflow --id=GZR8oxnRrqKSE43m
+  docker restart n8n_custom
+  ```
+
+* **En Windows (PowerShell):**
+  ```powershell
+  docker cp autotag-pipeline.json n8n_custom:/tmp/autotag-pipeline.json
+  docker exec n8n_custom n8n import:workflow --input=/tmp/autotag-pipeline.json
+  docker exec n8n_custom n8n publish:workflow --id=GZR8oxnRrqKSE43m
+  docker restart n8n_custom
+  ```
 
 ---
 
-### Paso 4: Cargar y Publicar el Flujo en n8n
-El flujo ya se encuentra definido en el archivo `autotag-pipeline.json`. Si necesitas reimportarlo o publicarlo:
-```powershell
-docker cp C:\Users\USER26\compose-qdrant\autotag-pipeline.json autotag_n8n:/tmp/autotag-pipeline.json
-docker exec autotag_n8n n8n import:workflow --input=/tmp/autotag-pipeline.json
-docker exec autotag_n8n n8n publish:workflow --id=GZR8oxnRrqKSE43m
-```
+### Paso 4: Compilar y Ejecutar el Backend (Spring Boot con Gradle)
+
+Ingresa a la carpeta `backend` y corre el script correspondiente a tu sistema operativo:
+
+* **En Linux / macOS:**
+  ```bash
+  cd backend
+  ./gradlew bootRun
+  ```
+
+* **En Windows (PowerShell / CMD):**
+  ```powershell
+  cd backend
+  .\gradlew.bat bootRun
+  ```
+
+*El backend iniciará en el puerto **`8081`**, sincronizará PostgreSQL y servirá el Front-End automáticamente.*
 
 ---
 
 ### Paso 5: Abrir la Aplicación Web
-Abre tu navegador web favorito e ingresa a:
-👉 **[http://localhost:8080](http://localhost:8080)**
+
+Abre tu navegador e ingresa a:
+👉 **[http://localhost:8081](http://localhost:8081)**
 
 ---
 
 ## 🛠️ Herramienta de Línea de Comandos (CLI Helper)
 
-Para pruebas automatizadas, scripts CI/CD o administración sin navegador, se incluye el script de PowerShell [`cli.ps1`](file:///C:/Users/USER26/compose-qdrant/cli.ps1):
+Para pruebas automatizadas, scripts CI/CD o administración sin navegador, se incluye el script de PowerShell [`cli.ps1`](cli.ps1):
 
 ```powershell
 # Comprobar salud y conexión de PostgreSQL, Qdrant y n8n
@@ -221,12 +266,14 @@ Para pruebas automatizadas, scripts CI/CD o administración sin navegador, se in
 ## 📂 Estructura de Directorios del Repositorio
 
 ```text
-C:\Users\USER26\compose-qdrant/
+autotag-docs/
 │
 ├── backend/                             # Proyecto Spring Boot 25 con Gradle
 │   ├── build.gradle                     # Configuración de dependencias (JPA, WebClient, PostgreSQL)
 │   ├── settings.gradle                  # Nombre del proyecto Gradle
+│   ├── gradlew                          # Wrapper ejecutable de Gradle para Linux / macOS
 │   ├── gradlew.bat                      # Wrapper de Gradle para Windows
+│   ├── gradle/wrapper/                  # Distribución oficial y portable de Gradle Wrapper
 │   └── src/main/java/com/autotag/docs/  # Código fuente Java (Controllers, Services, DTOs, Repositories)
 │       └── resources/
 │           ├── application.yml          # Configuración de base de datos, n8n y Qdrant

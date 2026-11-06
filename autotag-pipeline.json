@@ -22,7 +22,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst documentId = body.documentId || 'doc-default';\nconst fileName = body.fileName || 'document.pdf';\nconst filePath = body.filePath || `/shared-storage/uploads/${documentId}.pdf`;\nconst callbackUrl = body.callbackUrl || `http://host.docker.internal:8080/api/documents/${documentId}/callback`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    filePath,\n    callbackUrl,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst documentId = body.documentId || 'doc-default';\nconst fileName = body.fileName || 'document.pdf';\nconst filePath = body.filePath || `/shared-storage/uploads/${documentId}.pdf`;\nconst callbackUrl = body.callbackUrl || `http://host.docker.internal:8081/api/documents/${documentId}/callback`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    filePath,\n    callbackUrl,\n    receivedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "prepare-metadata",
       "name": "Extract Metadata",

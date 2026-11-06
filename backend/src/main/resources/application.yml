@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8081}
   servlet:
     context-path: /
 
@@ -10,7 +10,7 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:app_db}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:app_db}}
     username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
@@ -42,15 +42,15 @@ storage:
 # Orquestador AI (n8n Webhook Triggers)
 n8n:
   webhook:
-    url: ${N8N_WEBHOOK_URL:http://localhost:5678/webhook/process-pdf}
+    url: ${N8N_WEBHOOK_URL:http://localhost:5679/webhook/process-pdf}
     connect-timeout-ms: 5000
     read-timeout-ms: 30000
-  backend-callback-base-url: ${BACKEND_CALLBACK_BASE_URL:http://host.docker.internal:8080}
+  backend-callback-base-url: ${BACKEND_CALLBACK_BASE_URL:http://host.docker.internal:8081}
 
 # Base de Datos Vectorial (Qdrant)
 qdrant:
   host: ${QDRANT_HOST:localhost}
-  port: ${QDRANT_PORT:6333}
+  port: ${QDRANT_PORT:6334}
   collection: ${QDRANT_COLLECTION:autotag_documents}
   vector-size: 384
   distance-metric: Cosine

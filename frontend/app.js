@@ -3,7 +3,7 @@
  * Connects to Spring Boot 25 backend, displays real-time triggers, vector search & tags
  */
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = (window.location.port === '8081' || window.location.port === '') ? '' : 'http://localhost:8081';
 
 // App State
 let state = {
@@ -286,7 +286,7 @@ async function fetchDocuments() {
 
     } catch (err) {
         console.error('Error al obtener documentos:', err);
-        docTbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-muted">Error al conectar con el backend (${err.message}). Comprueba que Spring Boot esté corriendo en el puerto 8080.</td></tr>`;
+        docTbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-muted">Error al conectar con el backend (${err.message}). Comprueba que Spring Boot esté corriendo en el puerto 8081.</td></tr>`;
     }
 }
 
