@@ -1,0 +1,15 @@
+# Gradle build files
+backend/.gradle/
+backend/build/
+.gradle/
+build/
+
+# IDE files
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+
+# Temporary files
+*.log
+*.tmp

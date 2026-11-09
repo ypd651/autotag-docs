@@ -2,12 +2,14 @@ package com.autotag.docs.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -36,6 +38,41 @@ public class QdrantService {
 
     private String getBaseUrl() {
         return "http://" + qdrantHost + ":" + qdrantPort;
+    }
+
+    @PostConstruct
+    public void initCollection() {
+        try {
+            String url = getBaseUrl() + "/collections/" + collectionName;
+            String checkRes = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .onErrorReturn("")
+                    .block(Duration.ofSeconds(3));
+
+            if (checkRes == null || (!checkRes.contains("\"status\":\"ok\"") && !checkRes.contains("\"status\":\"green\""))) {
+                log.info("Creando coleccion vectorial '{}' en Qdrant...", collectionName);
+                Map<String, Object> body = Map.of(
+                        "vectors", Map.of(
+                                "size", vectorSize,
+                                "distance", "Cosine"
+                        )
+                );
+                webClient.put()
+                        .uri(url)
+                        .header("Content-Type", "application/json")
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(5));
+                log.info("Coleccion '{}' creada con exito en Qdrant.", collectionName);
+            } else {
+                log.info("Coleccion '{}' verificada y activa en Qdrant.", collectionName);
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo auto-inicializar la coleccion '{}' en Qdrant: {}", collectionName, e.getMessage());
+        }
     }
 
     public static class ScoredChunkResult {

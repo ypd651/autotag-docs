@@ -44,6 +44,8 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./shared-storage:/shared-storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     depends_on:
       postgres:

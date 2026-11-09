@@ -32,7 +32,7 @@ El proyecto se estructuró dividiendo responsabilidades en dos roles de ingenier
                                              ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                          ROL 1: BACKEND DEVELOPER & DATABASE ADMIN                      │
-│                               Spring Boot 25 (Gradle) • Puerto 8080                     │
+│                               Spring Boot 25 (Gradle) • Puerto 8081                     │
 │  - Controladores REST (/api/documents, /api/search, /api/system/diagnostics)            │
 │  - Persistencia JPA/Hibernate con PostgreSQL (app_db en postgres_custom:5432)           │
 │  - Despachador de Triggers Webhooks hacia n8n con WebClient asíncrono                   │
@@ -178,10 +178,21 @@ Ingresa a la carpeta `backend` y corre el script correspondiente a tu sistema op
 
 ---
 
-### Paso 5: Abrir la Aplicación Web
+### Paso 5: Abrir la Aplicación Web (Dos Opciones)
 
-Abre tu navegador e ingresa a:
-👉 **[http://localhost:8081](http://localhost:8081)**
+* **Opción A (Recomendada - Integrada en Spring Boot):**
+  Al levantar el backend con Gradle, el frontend se sirve automáticamente en:
+  👉 **[http://localhost:8081](http://localhost:8081)**
+
+* **Opción B (Servidor Frontend Independiente - Puerto 3000):**
+  Si prefieres ejecutar el frontend de forma desacoplada para desarrollo web:
+  ```bash
+  cd frontend
+  npm start
+  ```
+  *(O `node server.js` / `python3 -m http.server 3000`)*
+  Abre tu navegador en:
+  👉 **[http://localhost:3000](http://localhost:3000)** (se comunicará automáticamente con la API en el puerto `8081`).
 
 ---
 

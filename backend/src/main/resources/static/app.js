@@ -3,7 +3,7 @@
  * Connects to Spring Boot 25 backend, displays real-time triggers, vector search & tags
  */
 
-const API_BASE = (window.location.port === '8081' || window.location.port === '') ? '' : 'http://localhost:8081';
+const API_BASE = (window.location.protocol !== 'file:' && window.location.port === '8081') ? '' : 'http://localhost:8081';
 
 // App State
 let state = {

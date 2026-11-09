@@ -1,0 +1,12 @@
+{
+  "name": "autotag-docs-frontend",
+  "version": "1.0.0",
+  "description": "Frontend SPA para AutoTag Docs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["autotag", "spa", "frontend"],
+  "author": "",
+  "license": "ISC"
+}

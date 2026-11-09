@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # AutoTag Docs — CLI Headless Tool (Manejo sin Frontend)
 # ==============================================================================
 param (
@@ -12,7 +12,7 @@ param (
     [string]$Param2 = ""
 )
 
-$API = "http://localhost:8080/api"
+$API = "http://localhost:8081/api"
 
 function Show-Help {
     Write-Host "`n=== AutoTag Docs - Gestor CLI Headless ===" -ForegroundColor Cyan

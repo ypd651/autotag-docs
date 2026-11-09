@@ -26,6 +26,9 @@ public class TriggerHealthController {
     @Value("${n8n.webhook.url:http://localhost:5678/webhook/process-pdf}")
     private String n8nWebhookUrl;
 
+    @Value("${n8n.backend-callback-base-url:http://host.docker.internal:8081}")
+    private String backendCallbackBaseUrl;
+
     @Value("${qdrant.host:localhost}")
     private String qdrantHost;
 
@@ -108,7 +111,7 @@ public class TriggerHealthController {
                 "filePath", "/shared-storage/uploads/test.pdf",
                 "fileSize", 1024,
                 "mimeType", "application/pdf",
-                "callbackUrl", "http://backend:8080/api/system/triggers/dummy-callback"
+                "callbackUrl", backendCallbackBaseUrl + "/api/system/triggers/dummy-callback"
         );
 
         try {
