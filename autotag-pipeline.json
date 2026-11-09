@@ -22,7 +22,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst documentId = body.documentId || 'doc-default';\nconst fileName = body.fileName || 'document.pdf';\nconst filePath = body.filePath || `/shared-storage/uploads/${documentId}.pdf`;\nconst callbackUrl = body.callbackUrl || `http://host.docker.internal:8081/api/documents/${documentId}/callback`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    filePath,\n    callbackUrl,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst documentId = body.documentId || 'doc-default';\nconst fileName = body.fileName || 'document.pdf';\nconst filePath = body.filePath || `/shared-storage/uploads/${documentId}.pdf`;\nconst callbackUrl = body.callbackUrl || process.env.BACKEND_CALLBACK_URL || `http://host.docker.internal:8081/api/documents/${documentId}/callback`;\n\nreturn [{\n  json: {\n    documentId,\n    fileName,\n    filePath,\n    callbackUrl,\n    receivedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "prepare-metadata",
       "name": "Extract Metadata",
@@ -48,7 +48,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst chunks = data.chunks || [];\n\nfunction generateDeterministicEmbedding(text, dimension = 384) {\n  const vector = new Array(dimension).fill(0);\n  for (let i = 0; i < text.length; i++) {\n    const charCode = text.charCodeAt(i);\n    const idx = (charCode * 31 + i * 17) % dimension;\n    vector[idx] += Math.sin(charCode + i);\n  }\n  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1.0;\n  return vector.map(v => Number((v / norm).toFixed(6)));\n}\n\nconst points = chunks.map((chunk, index) => {\n  const embedding = generateDeterministicEmbedding(chunk.text, 384);\n  \n  return {\n    id: (Math.floor(Math.random() * 900000) + 100000),\n    vector: embedding,\n    payload: {\n      document_id: chunk.documentId,\n      file_name: chunk.fileName,\n      chunk_index: chunk.chunkIndex,\n      text: chunk.text,\n      tags: chunk.tags,\n      indexed_at: new Date().toISOString()\n    }\n  };\n});\n\nreturn [{\n  json: {\n    ...data,\n    qdrantPayload: {\n      points: points\n    }\n  }\n}];"
+        "jsCode": "const data = $input.first().json;\nconst chunks = data.chunks || [];\n\nfunction generateDeterministicEmbedding(text, dimension = 384) {\n  const vector = new Array(dimension).fill(0);\n  for (let i = 0; i < text.length; i++) {\n    const charCode = text.charCodeAt(i);\n    const idx = (charCode * 31 + i * 17) % dimension;\n    vector[idx] += Math.sin(charCode + i);\n  }\n  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1.0;\n  return vector.map(v => Number((v / norm).toFixed(6)));\n}\n\nfunction buildDeterministicPointId(documentId, chunkIndex) {\n  const input = `${documentId}::chunk-${chunkIndex}`;\n  const mix = (seed) => {\n    let h = (0x811c9dc5 ^ seed) >>> 0;\n    for (let i = 0; i < input.length; i++) {\n      h ^= (input.charCodeAt(i) + seed) & 0xff;\n      h = Math.imul(h, 0x01000193) >>> 0;\n      h ^= h >>> 15;\n      h = Math.imul(h, 0x27d4eb2d) >>> 0;\n      h ^= h >>> 13;\n    }\n    return (h >>> 0);\n  };\n  const hex = (n) => n.toString(16).padStart(8, '0');\n  const p0 = hex(mix(0x9e3779b9));\n  const p1 = hex(mix(0x85ebca6b));\n  const p2 = hex(mix(0xc2b2ae35));\n  const p3 = hex(mix(0x27d4eb2f));\n  const p4 = hex(mix(0x165667b1));\n  return `${p0}-${p1.slice(0,4)}-4${p1.slice(5,8)}-8${p2.slice(1,4)}-${p3}${p4.slice(0,4)}`;\n}\n\nconst points = chunks.map((chunk, index) => {\n  const embedding = generateDeterministicEmbedding(chunk.text, 384);\n  \n  return {\n    id: buildDeterministicPointId(chunk.documentId, chunk.chunkIndex),\n    vector: embedding,\n    payload: {\n      document_id: chunk.documentId,\n      file_name: chunk.fileName,\n      chunk_index: chunk.chunkIndex,\n      text: chunk.text,\n      tags: chunk.tags,\n      indexed_at: new Date().toISOString()\n    }\n  };\n});\n\nreturn [{\n  json: {\n    ...data,\n    qdrantPayload: {\n      points: points\n    }\n  }\n}];"
       },
       "id": "embeddings-generator",
       "name": "Generate Vector Embeddings",
@@ -62,14 +62,21 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "http://qdrant_custom:6333/collections/autotag_documents/points?wait=true",
+        "url": "http://qdrant_custom:6333/collections/autotag_documents",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.qdrantPayload) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ vectors: { size: 384, distance: 'Cosine' }, on_disk_payload: true }) }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
-      "id": "qdrant-upsert",
-      "name": "Upsert Points in Qdrant",
+      "id": "qdrant-create-collection",
+      "name": "Qdrant: Ensure Collection Exists",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -79,11 +86,31 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $('Chunking & Semantic Tagging').first().json.callbackUrl }}",
+        "method": "PUT",
+        "url": "http://qdrant_custom:6333/collections/autotag_documents/points?wait=true",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  documentId: $('Chunking & Semantic Tagging').first().json.documentId,\n  status: 'LISTO',\n  tags: $('Chunking & Semantic Tagging').first().json.tags,\n  summary: $('Chunking & Semantic Tagging').first().json.summary,\n  chunksCount: $('Chunking & Semantic Tagging').first().json.chunksCount,\n  vectorCollection: 'autotag_documents'\n}) }}",
+        "jsonBody": "={{ JSON.stringify($json.qdrantPayload) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "qdrant-upsert",
+      "name": "Upsert Points in Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  documentId: $json.documentId,\n  status: 'LISTO',\n  tags: $json.tags,\n  summary: $json.summary,\n  chunksCount: $json.chunksCount,\n  vectorCollection: 'autotag_documents'\n}) }}",
         "options": {
           "timeout": 15000
         }
@@ -93,7 +120,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1450,
+        1700,
         300
       ]
     }
@@ -133,6 +160,17 @@
       ]
     },
     "Generate Vector Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Qdrant: Ensure Collection Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant: Ensure Collection Exists": {
       "main": [
         [
           {

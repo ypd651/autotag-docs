@@ -1,0 +1,13 @@
+{
+  "name": "autotag_documents",
+  "on_disk_payload": true,
+  "vectors": {
+    "size": 384,
+    "distance": "Cosine"
+  },
+  "payload_schema": {
+    "document_id": {"type": "keyword"},
+    "file_name": {"type": "keyword"},
+    "tags": {"type": "keyword"}
+  }
+}

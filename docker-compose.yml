@@ -26,6 +26,8 @@ services:
       - "6335:6334" # Puerto gRPC
     volumes:
       - qdrant_data:/qdrant/storage
+      # Script DDL de la coleccion vectorial (se ejecuta automaticamente al iniciar Qdrant)
+      - ./qdrant-init.json:/qdrant/init/01-autotag-documents.json:ro
     restart: unless-stopped
 
   n8n:
